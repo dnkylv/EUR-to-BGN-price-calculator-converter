@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <title>Евро ⇆ Лев Калкулатор</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Material Web CDN -->
+  <script type="module" src="https://esm.run/@material/web/all"></script>
+
+  <style>
+    :root {
+      --md-sys-color-primary: #0d47a1;   /* EU blue */
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-secondary: #fbc02d; /* EU yellow */
+      --md-sys-color-on-secondary: #000000;
+      --bg-color: #f5f7fa;
+      --text-color: #000000;
+      --card-bg: #ffffff;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f5f5f5;
+      --card-bg: #1e1e1e;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg-color);
+      margin: 0;
+      padding: 16px;
+      color: var(--text-color);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    main {
+      max-width: 600px;
+      margin: auto;
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 24px;
+      transition: background 0.3s;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--md-sys-color-primary);
+      margin-bottom: 24px;
+	  font-size: 1.8rem;
+    }
+
+    section {
+      margin-bottom: 32px;
+    }
+
+    section h2 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: var(--md-sys-color-secondary);
+    }
+
+    .row {
+      display: flex;
+      gap: 16px;
+      margin: 12px 0;
+	  
+    }
+
+    md-outlined-text-field {
+      flex: 1;
+    }
+
+    #warning {
+      margin-top: 16px;
+      color: red;
+      font-weight: bold;
+      display: none;
+      text-align: center;
+    }
+
+    .dark-toggle {
+      text-align: center;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 200px) {
+      .row {
+        flex-direction: column;
+      }
+	  }
+	  
+	.blue-text {
+     color: #0d47a1; /* EU deep blue */
+     font-weight: bold;
+     }
+
+    .green-text {
+      color: #2e7d32; /* modern green */
+      font-weight: bold;
+     }
+	 
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Евро ⇆ Лев Калкулатор</h1>
+
+    <section>
+      <h2>Калкулатор (въведете стойност в едно от двете полета)</h2>
+      <div class="row">
+        <md-outlined-text-field id="eurConv" label="Евро" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*"></md-outlined-text-field>
+        <md-outlined-text-field id="bgnConv" label="Лев" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*"></md-outlined-text-field>
+      </div>
+    </section>
+
+    <section>
+      <h2>Цена</h2>
+      <div class="row">
+        <md-outlined-text-field id="priceEur" label="Цена (Евро)" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*"></md-outlined-text-field>
+        <md-outlined-text-field id="priceBgn" label="Цена (Лев)" type="text" readonly></md-outlined-text-field>
+      </div>
+    </section>
+
+    <section>
+      <h2>Платено</h2>
+      <div class="row">
+        <md-outlined-text-field id="payEur" label="Евро" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*"></md-outlined-text-field>
+        <md-outlined-text-field id="payBgn" label="Лев" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*"></md-outlined-text-field>
+      </div>
+    </section>
+
+    <div id="warning"></div>
+
+    <section>
+      <h2>Ресто в Евро</h2>
+      <div class="row">
+        <md-outlined-text-field id="changeEur" label="Ресто винаги в Евро" type="text" suffix-text="€"></md-outlined-text-field>
+      </div>
+    </section>
+
+     <!-- <div class="dark-toggle">
+      <md-outlined-button id="toggleTheme">🌙 Dark Mode</md-outlined-button>
+    </div> -->
+  </main>
+
+  <script>
+    const RATE = 1.95583;
+
+    const eurConv = document.getElementById("eurConv");
+    const bgnConv = document.getElementById("bgnConv");
+    const priceEur = document.getElementById("priceEur");
+    const priceBgn = document.getElementById("priceBgn");
+    const payEur = document.getElementById("payEur");
+    const payBgn = document.getElementById("payBgn");
+    const changeEur = document.getElementById("changeEur");
+    const warning = document.getElementById("warning");
+    const toggleTheme = document.getElementById("toggleTheme");
+	
+	changeEur.addEventListener("change", updateFromChange);
+
+    function updateFromChange() {
+    const price = parseNumber(priceEur.value);
+    const payedEur = parseNumber(payEur.value);
+
+    const desiredChange = parseNumber(changeEur.value);
+
+    // Required total pay in EUR = price + desiredChange
+    const requiredTotalEur = price + desiredChange;
+
+    // How much BGN should be given = (required total - already paid EUR) in EUR → convert to BGN
+    const requiredBgn = (requiredTotalEur - payedEur) * RATE;
+
+    // Prevent negatives
+    payBgn.value = requiredBgn > 0 ? requiredBgn.toFixed(2) : "0.00";
+
+    updateAll(); // recalc to keep everything consistent
+    }
+
+    function parseNumber(val) {
+      if (!val) return 0;
+      return parseFloat(val.replace(",", "."));
+    }
+
+    function safeFixed(val) {
+      return isNaN(val) ? "" : val.toFixed(2);
+    }
+
+    function updateConverterFromEur() {
+      const eur = parseNumber(eurConv.value);
+      bgnConv.value = safeFixed(eur * RATE);
+    }
+
+    function updateConverterFromBgn() {
+      const bgn = parseNumber(bgnConv.value);
+      eurConv.value = safeFixed(bgn / RATE);
+    }
+
+    eurConv.addEventListener("input", updateConverterFromEur);
+    bgnConv.addEventListener("input", updateConverterFromBgn);
+
+    priceEur.addEventListener("input", updateAll);
+    payEur.addEventListener("input", updateAll);
+    payBgn.addEventListener("input", updateAll);
+
+    function updateAll() {
+      const price = parseNumber(priceEur.value);
+      priceBgn.value = safeFixed(price * RATE);
+
+      const payedEur = parseNumber(payEur.value);
+      const payedBgn = parseNumber(payBgn.value);
+      const totalPayedEur = payedEur + (payedBgn / RATE);
+
+      const diff = totalPayedEur - price;
+
+      if (diff >= 0) {
+        changeEur.value = safeFixed(diff);
+        warning.style.display = "none";
+      } else {
+        changeEur.value = "0.00";
+        const missingEur = safeFixed(-diff);
+        const missingBgn = safeFixed(-diff * RATE);
+        warning.innerHTML = `Нужни са още: <br>
+        <span class="blue-text">${missingEur} €</span> или <span class="green-text">${missingBgn} лв.</span>`;
+
+
+        warning.style.display = "block";
+      }
+	}
+	
+	
+    // Dark mode toggle
+    toggleTheme.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      toggleTheme.textContent = document.body.classList.contains("dark") ? "☀️ Light Mode" : "🌙 Dark Mode";
+    });
+  </script>
+</body>
+</html>
